@@ -17,9 +17,16 @@ class Type(Enum):
 @dataclass(frozen=True)
 class Var:
     name: str
+    elem_type: Type
+    def_inst: Instr
 
+    """
+    def __init__(self, n, ty):
+        self.name = n
+        self.elem_type = ty
+    """
     def to_json(self):
-        return {"var": self.name}
+        return {"var": self.name, "type": self.var_type}
 
     def __str__(self) -> str:
         return self.name
@@ -29,9 +36,15 @@ class Var:
 class Imm:
     # Immediate literal: integer or boolean
     value: Union[int, bool]
+    elem_type: Type
 
+    """
+    def __init__(self, val, ty):
+        self.value = val
+        self.elem_type = ty
+    """
     def to_json(self):
-        return {"imm": self.value}
+        return {"imm": self.value, "type": self.elem_type}
 
     def __str__(self) -> str:
         return str(self.value).lower() if isinstance(self.value, bool) else str(self.value)
@@ -92,18 +105,20 @@ def instr_logic(op: str, dest: Optional[str], *args: Operand) -> Instr:
 def instr_not(dest: str, a: Operand) -> Instr:
     return Instr(op="not", args=[a], dest=dest)
 
-
 def instr_jmp(label: str) -> Instr:
     return Instr(op="jmp", labels=[label])
 
+def instr_id(dest:str, var: Operand) -> Instr:
+    return Instr(op="id", dest=dest, args=[var])
+
+def instr_const(dest: str, var: Operand) -> Instr:
+    return Instr(op="const", dest=dest, args=[var])
 
 def instr_br(cond: Operand, tlabel: str, flabel: str) -> Instr:
     return Instr(op="br", args=[cond], labels=[tlabel, flabel])
 
-
 def instr_call(dest: Optional[str], func_name: str, args: List[Operand]) -> Instr:
     return Instr(op="call", func=func_name, args=args, dest=dest)
-
 
 def instr_ret(val: Optional[Operand] = None) -> Instr:
     return Instr(op="ret", args=[val] if val is not None else [])
@@ -115,6 +130,9 @@ class Block:
     label: str
     instrs: List[Instr] = field(default_factory=list)
     succs: List[Block] = field(default_factory=List)
+
+    def append(self, instr):
+        self.instrs.append(instr)
 
     def to_json(self):
         return {"label": self.label, "instrs": [i.to_json() for i in self.instrs]}
